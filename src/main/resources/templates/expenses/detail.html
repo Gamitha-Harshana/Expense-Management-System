@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Expense Detail &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-receipt"></i> Expense Detail</h1>
+        <div class="d-flex gap-2">
+            <a th:href="@{/expenses}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back</a>
+            <a th:if="${canEdit}" th:href="@{/expenses/{id}/edit(id=${expense.id})}" class="btn btn-outline-primary">
+                <i class="bi bi-pencil"></i> Edit
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card ems-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 th:text="${expense.title}">Title</h5>
+                    <span class="status-badge"
+                          th:classappend="'status-' + ${expense.status.name().toLowerCase()}"
+                          th:text="${expense.status}"></span>
+                </div>
+                <div class="card-body">
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Amount</span>
+                            <span class="detail-value amount-large"
+                                  th:text="${expense.currency + ' ' + #numbers.formatDecimal(expense.amount, 1, 'COMMA', 2, 'POINT')}"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Category</span>
+                            <span class="detail-value"><span class="badge-category" th:text="${expense.category}"></span></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Type</span>
+                            <span class="detail-value"><span class="badge-type" th:text="${expense.expenseType}"></span></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Expense Date</span>
+                            <span class="detail-value"
+                                  th:text="${#temporals.format(expense.expenseDate, 'dd MMMM yyyy')}"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Submitted By</span>
+                            <span class="detail-value" th:text="${expense.user?.fullName}"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Department</span>
+                            <span class="detail-value" th:text="${expense.user?.department}"></span>
+                        </div>
+                        <div class="detail-item" th:if="${expense.submittedAt != null}">
+                            <span class="detail-label">Submitted At</span>
+                            <span class="detail-value"
+                                  th:text="${#temporals.format(expense.submittedAt, 'dd MMM yyyy HH:mm')}"></span>
+                        </div>
+                        <div class="detail-item" th:if="${expense.approver != null}">
+                            <span class="detail-label">Reviewed By</span>
+                            <span class="detail-value" th:text="${expense.approver.fullName}"></span>
+                        </div>
+                    </div>
+
+                    <div th:if="${expense.description}" class="mt-4">
+                        <div class="detail-label">Description</div>
+                        <p th:text="${expense.description}" class="mt-1"></p>
+                    </div>
+                    <div th:if="${expense.notes}" class="mt-3">
+                        <div class="detail-label">Notes</div>
+                        <p th:text="${expense.notes}" class="mt-1"></p>
+                    </div>
+                    <div th:if="${expense.rejectionReason}" class="mt-3 rejection-box">
+                        <div class="detail-label text-danger">Rejection Reason</div>
+                        <p th:text="${expense.rejectionReason}" class="mt-1 text-danger"></p>
+                    </div>
+
+                    <div class="audit-trail mt-4">
+                        <div class="detail-label">Audit Trail</div>
+                        <div class="audit-entries mt-2">
+                            <div class="audit-entry" th:if="${expense.createdAt}">
+                                <i class="bi bi-plus-circle text-success"></i>
+                                Created by <strong th:text="${expense.createdBy}"></strong>
+                                on <span th:text="${#temporals.format(expense.createdAt, 'dd MMM yyyy HH:mm')}"></span>
+                            </div>
+                            <div class="audit-entry" th:if="${expense.updatedAt}">
+                                <i class="bi bi-pencil text-info"></i>
+                                Last updated by <strong th:text="${expense.updatedBy}"></strong>
+                                on <span th:text="${#temporals.format(expense.updatedAt, 'dd MMM yyyy HH:mm')}"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Actions Panel -->
+        <div class="col-md-4">
+            <!-- Receipt -->
+            <div class="card ems-card" th:if="${expense.hasReceipt()}">
+                <div class="card-header"><h6><i class="bi bi-paperclip"></i> Receipt</h6></div>
+                <div class="card-body text-center">
+                    <img th:if="${expense.receiptContentType?.startsWith('image/')}"
+                         th:src="@{/expenses/{id}/receipt(id=${expense.id})}"
+                         class="receipt-preview" alt="Receipt">
+                    <div th:if="${expense.receiptContentType != null and !expense.receiptContentType.startsWith('image/')}" class="pdf-icon">
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </div>
+                    <a th:href="@{/expenses/{id}/receipt(id=${expense.id})}" target="_blank"
+                       class="btn btn-sm btn-outline-primary mt-2 d-block">
+                        <i class="bi bi-download"></i> View Receipt
+                    </a>
+                </div>
+            </div>
+
+            <!-- Submit (Owner, DRAFT) -->
+            <div class="card ems-card" th:if="${expense.editable and expense.user.id == currentUser.id}">
+                <div class="card-body">
+                    <h6>Submit for Approval</h6>
+                    <p class="text-muted small">Once submitted, you cannot edit this expense.</p>
+                    <form th:action="@{/expenses/{id}/submit(id=${expense.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="btn btn-success w-100"
+                                onclick="return confirm('Submit for approval?')">
+                            <i class="bi bi-send"></i> Submit
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Approve/Reject (Manager/Admin, SUBMITTED) -->
+            <div class="card ems-card" th:if="${canApprove}">
+                <div class="card-body">
+                    <h6>Approval Decision</h6>
+                    <form th:action="@{/expenses/{id}/approve(id=${expense.id})}" method="post" class="mb-2">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-check-circle"></i> Approve
+                        </button>
+                    </form>
+                    <form th:action="@{/expenses/{id}/reject(id=${expense.id})}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <div class="mb-2">
+                            <textarea name="reason" class="form-control form-control-sm" rows="2"
+                                      placeholder="Rejection reason..." required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">
+                            <i class="bi bi-x-circle"></i> Reject
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,4 @@
+com\expensemanager\service\UserServiceTest.class
+com\expensemanager\service\ExpenseServiceTest.class
+com\expensemanager\ExpenseManagementApplicationTests.class
+com\expensemanager\service\BudgetServiceTest.class

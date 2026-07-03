@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title>Dashboard &mdash; EMS</title>
+</head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </h1>
+        <a th:href="@{/expenses/new}" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add Expense
+        </a>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <sec:authorize access="hasAnyRole('MANAGER','ADMIN')">
+            <div class="stat-card stat-card-warning">
+                <div class="stat-card-top">
+                    <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+                    <span class="stat-trend stat-trend-neu"><i class="bi bi-dash"></i> pending</span>
+                </div>
+                <div class="stat-value" th:text="${pendingApprovals ?: 0}">0</div>
+                <div class="stat-label">Pending Approvals</div>
+                <div class="stat-bar"
+                     th:style="'width: ' + (${pendingApprovals != null and pendingApprovals > 0} ? '80%' : '15%')"></div>
+            </div>
+        </sec:authorize>
+        <sec:authorize access="hasAnyRole('EMPLOYEE','INDIVIDUAL')">
+            <div class="stat-card stat-card-info">
+                <div class="stat-card-top">
+                    <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
+                    <span class="stat-trend stat-trend-neu"><i class="bi bi-pencil"></i> drafts</span>
+                </div>
+                <div class="stat-value" th:text="${draftCount ?: 0}">0</div>
+                <div class="stat-label">Draft Expenses</div>
+                <div class="stat-bar"
+                     th:style="'width: ' + (${draftCount != null and draftCount > 0} ? '60%' : '10%')"></div>
+            </div>
+        </sec:authorize>
+        <div class="stat-card stat-card-primary">
+            <div class="stat-card-top">
+                <div class="stat-icon"><i class="bi bi-bell"></i></div>
+                <span class="stat-trend"
+                      th:classappend="${unreadCount != null and unreadCount > 0} ? 'stat-trend-up' : 'stat-trend-neu'">
+                    <i class="bi bi-bell-fill" th:if="${unreadCount != null and unreadCount > 0}"></i>
+                    <i class="bi bi-bell" th:unless="${unreadCount != null and unreadCount > 0}"></i>
+                    new
+                </span>
+            </div>
+            <div class="stat-value" th:text="${unreadCount ?: 0}">0</div>
+            <div class="stat-label">Unread Notifications</div>
+            <div class="stat-bar" th:style="'width: ' + (${unreadCount != null and unreadCount > 0} ? '70%' : '5%')"></div>
+        </div>
+    </div>
+
+    <!-- Pending Approvals Table (Manager/Admin) -->
+    <sec:authorize access="hasAnyRole('MANAGER','ADMIN')">
+        <div class="card ems-card" th:if="${pendingExpenses != null and !pendingExpenses.empty}">
+            <div class="card-header">
+                <h5><i class="bi bi-clock-history me-2"></i>Pending Approvals</h5>
+                <a th:href="@{/expenses(status='SUBMITTED')}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover ems-table mb-0">
+                        <thead>
+                        <tr>
+                            <th>Title</th><th>Submitted By</th><th>Amount</th>
+                            <th>Category</th><th>Date</th><th>Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="e : ${pendingExpenses}">
+                            <td th:text="${e.title}"></td>
+                            <td th:text="${e.user?.fullName}"></td>
+                            <td class="amount" th:text="${e.currency + ' ' + #numbers.formatDecimal(e.amount, 1, 'COMMA', 2, 'POINT')}"></td>
+                            <td><span class="badge-category" th:text="${e.category}"></span></td>
+                            <td th:text="${#temporals.format(e.expenseDate, 'dd MMM yyyy')}"></td>
+                            <td>
+                                <a th:href="@{/expenses/{id}(id=${e.id})}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Review
+                                </a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </sec:authorize>
+
+    <!-- Budget Overview (Employee/Individual) -->
+    <sec:authorize access="hasAnyRole('EMPLOYEE','INDIVIDUAL')">
+        <div class="card ems-card" th:if="${budgetLimits != null and !budgetLimits.empty}">
+            <div class="card-header">
+                <h5><i class="bi bi-piggy-bank me-2"></i>Budget Overview (This Month)</h5>
+                <a th:href="@{/budget}" class="btn btn-sm btn-outline-primary">Manage</a>
+            </div>
+            <div class="card-body">
+                <div th:each="budget : ${budgetLimits}" class="budget-item">
+                    <div class="budget-header">
+                        <span class="budget-category" th:text="${budget.category}"></span>
+                        <span class="budget-amounts">
+                            <span th:text="|Rs. ${#numbers.formatDecimal(budget.currentSpend, 1, 2)}|"></span>
+                            <span class="text-muted"> / </span>
+                            <span th:text="|Rs. ${#numbers.formatDecimal(budget.monthlyLimit, 1, 2)}|"></span>
+                        </span>
+                    </div>
+                    <div class="progress budget-progress">
+                        <div class="progress-bar"
+                             th:classappend="${budget.usagePercentage >= 100} ? 'bg-danger' : (${budget.usagePercentage >= 80} ? 'bg-warning' : 'bg-success')"
+                             th:style="|width: ${#numbers.formatDecimal(budget.usagePercentage > 100 ? 100 : budget.usagePercentage, 0, 0)}%|"
+                             role="progressbar"></div>
+                    </div>
+                    <div class="budget-percent"
+                         th:text="${#numbers.formatDecimal(budget.usagePercentage, 1, 1) + '%'}"></div>
+                </div>
+            </div>
+        </div>
+    </sec:authorize>
+
+    <!-- Recent Notifications -->
+    <div class="card ems-card" th:if="${recentNotifications != null and !recentNotifications.empty}">
+        <div class="card-header">
+            <h5><i class="bi bi-bell me-2"></i>Recent Notifications</h5>
+            <a th:href="@{/notifications}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="notification-list">
+                <div th:each="n : ${recentNotifications}" class="notification-item">
+                    <div class="notif-icon" th:classappend="'notif-' + ${n.type.name().toLowerCase()}">
+                        <i th:class="'bi ' + (${n.type.name() == 'SUCCESS'} ? 'bi-check-circle' : (${n.type.name() == 'WARNING'} ? 'bi-exclamation-triangle' : 'bi-info-circle'))"></i>
+                    </div>
+                    <div class="notif-content">
+                        <div class="notif-title" th:text="${n.title}"></div>
+                        <div class="notif-message" th:text="${n.message}"></div>
+                        <div class="notif-time" th:text="${#temporals.format(n.createdAt, 'dd MMM HH:mm')}"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
