@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Notifications &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-bell"></i> Notifications</h1>
+    </div>
+    <div class="card ems-card">
+        <div class="card-body">
+            <div th:if="${notifications.empty}" class="text-center py-5 text-muted">
+                <i class="bi bi-bell-slash fs-2 d-block mb-2"></i>
+                No notifications yet.
+            </div>
+            <div class="notification-list-full">
+                <div th:each="n : ${notifications}" class="notification-item-full"
+                     th:classappend="${!n.read} ? 'unread'">
+                    <div class="notif-icon" th:classappend="'notif-' + ${n.type.name().toLowerCase()}">
+                        <i th:class="'bi ' + (${n.type.name() == 'SUCCESS'} ? 'bi-check-circle' : (${n.type.name() == 'WARNING'} ? 'bi-exclamation-triangle' : (${n.type.name() == 'ERROR'} ? 'bi-x-circle' : 'bi-info-circle')))"></i>
+                    </div>
+                    <div class="notif-content flex-grow-1">
+                        <div class="notif-title" th:text="${n.title}"></div>
+                        <div class="notif-message" th:text="${n.message}"></div>
+                        <div class="notif-time text-muted small"
+                             th:text="${#temporals.format(n.createdAt, 'dd MMM yyyy HH:mm')}"></div>
+                    </div>
+                    <span class="badge bg-primary ms-2" th:if="${!n.read}">New</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
