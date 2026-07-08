@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Department &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">
+                <i class="bi bi-diagram-3"></i> Department Panel
+            </h1>
+            <p class="page-sub">
+                <span th:if="${company != null}" th:text="${company.name}"></span>
+                <span th:if="${department != null}" th:text="' · ' + ${department.name}"></span>
+            </p>
+        </div>
+        <a th:href="@{/manager/add-employee}" class="btn btn-primary">
+            <i class="bi bi-person-plus"></i> Add Employee
+        </a>
+    </div>
+
+
+    <div class="stats-grid" style="--cols:3;">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon"><i class="bi bi-people"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${employeeCount ?: 0}">0</div>
+                <div class="stat-label">Employees</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-warning">
+            <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${pendingCount ?: 0}">0</div>
+                <div class="stat-label">Pending Expenses</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-success">
+            <div class="stat-icon"><i class="bi bi-check2-all"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${approvedCount ?: 0}">0</div>
+                <div class="stat-label">Approved This Month</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending Approvals -->
+    <div class="card ems-card mb-4" th:if="${pendingExpenses != null and !pendingExpenses.empty}">
+        <div class="card-header">
+            <h5><i class="bi bi-clock-history me-2"></i>Pending Approvals</h5>
+            <a th:href="@{/expenses(status='SUBMITTED')}" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Title</th><th>Employee</th><th>Amount</th><th>Date</th><th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="e : ${pendingExpenses}">
+                        <td><a th:href="@{/expenses/{id}(id=${e.id})}" th:text="${e.title}" class="expense-link"></a></td>
+                        <td th:text="${e.user?.fullName}" class="text-muted"></td>
+                        <td class="amount" th:text="${e.currency + ' ' + #numbers.formatDecimal(e.amount, 1, 'COMMA', 2, 'POINT')}"></td>
+                        <td th:text="${#temporals.format(e.expenseDate, 'dd MMM yyyy')}" class="text-muted"></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <form th:action="@{/expenses/{id}/approve(id=${e.id})}" method="post">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-success btn-sm" title="Approve">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </form>
+                                <a th:href="@{/expenses/{id}(id=${e.id})}" class="btn btn-outline-primary btn-sm" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employees Table -->
+    <div class="card ems-card">
+        <div class="card-header">
+            <h5><i class="bi bi-people me-2"></i>My Employees</h5>
+            <div class="d-flex gap-2">
+                <a th:href="@{/department/budget}" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-wallet2"></i> Team Budgets
+                </a>
+                <a th:href="@{/manager/add-employee}" class="btn btn-sm btn-primary">
+                    <i class="bi bi-person-plus"></i> Add
+                </a>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${employees == null or employees.empty}" class="empty-state py-5">
+                <i class="bi bi-people fs-1 d-block mb-2 text-muted"></i>
+                <p class="text-muted">No employees yet. Add one to get started.</p>
+                <a th:href="@{/manager/add-employee}" class="btn btn-primary btn-sm">
+                    <i class="bi bi-person-plus me-1"></i> Add First Employee
+                </a>
+            </div>
+            <div class="table-responsive" th:if="${employees != null and !employees.empty}">
+                <table class="table table-hover ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="emp : ${employees}">
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar" th:text="${emp.firstName.charAt(0)}"></div>
+                                <span th:text="${emp.fullName}" class="fw-500"></span>
+                            </div>
+                        </td>
+                        <td th:text="${emp.email}" class="text-muted small"></td>
+                        <td>
+                            <span th:if="${emp.enabled}" class="status-badge status-approved">Active</span>
+                            <span th:unless="${emp.enabled}" class="status-badge status-rejected">Inactive</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <!-- Assign Budget -->
+                                <a th:href="@{/department/budget/assign(employeeId=${emp.id})}"
+                                   class="btn btn-outline-primary btn-sm" title="Assign Budget">
+                                    <i class="bi bi-wallet2"></i>
+                                </a>
+                                <!-- Deactivate -->
+                                <form th:if="${emp.enabled}"
+                                      th:action="@{/manager/employees/{id}/deactivate(id=${emp.id})}"
+                                      method="post"
+                                      onsubmit="return confirm('Deactivate this employee?')">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-outline-warning btn-sm" title="Deactivate">
+                                        <i class="bi bi-person-dash"></i>
+                                    </button>
+                                </form>
+                                <!-- Re-activate -->
+                                <form th:unless="${emp.enabled}"
+                                      th:action="@{/manager/employees/{id}/activate(id=${emp.id})}"
+                                      method="post">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-outline-success btn-sm" title="Activate">
+                                        <i class="bi bi-person-check"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

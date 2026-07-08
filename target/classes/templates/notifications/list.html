@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Notifications &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-bell"></i> Notifications</h1>
+        <!-- Clear All button — only show if there are notifications -->
+        <form th:if="${!notifications.empty}"
+              th:action="@{/notifications/clear-all}" method="post"
+              onsubmit="return confirm('Clear all notifications?')">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash3 me-1"></i> Clear All
+            </button>
+        </form>
+    </div>
+
+    <div class="card ems-card">
+        <!-- Empty state -->
+        <div th:if="${notifications.empty}" class="card-body text-center py-5">
+            <div style="font-size:3rem;opacity:.25;"><i class="bi bi-bell-slash"></i></div>
+            <p class="mt-3 text-muted">You have no notifications.</p>
+        </div>
+
+        <!-- Notification list -->
+        <div th:if="${!notifications.empty}" class="card-body p-0">
+            <div class="notification-list-full">
+                <div th:each="n : ${notifications}"
+                     class="notification-item-full d-flex align-items-start gap-3"
+                     th:classappend="${!n.read} ? ' unread' : ''"
+                     style="padding:1rem 1.25rem;border-bottom:1px solid var(--border-color);transition:background .2s;">
+
+                    <!-- Type icon -->
+                    <div class="notif-icon flex-shrink-0"
+                         th:classappend="'notif-' + ${n.type.name().toLowerCase()}">
+                        <i th:class="'bi ' + (${n.type.name() == 'SUCCESS'} ? 'bi-check-circle'
+                                           : (${n.type.name() == 'WARNING'} ? 'bi-exclamation-triangle'
+                                           : (${n.type.name() == 'ERROR'} ? 'bi-x-circle'
+                                           : 'bi-info-circle')))"></i>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="fw-600" style="color:var(--text-primary);" th:text="${n.title}"></span>
+                            <span class="badge bg-primary" style="font-size:.68rem;" th:if="${!n.read}">New</span>
+                        </div>
+                        <div style="color:var(--text-secondary);font-size:.9rem;" th:text="${n.message}"></div>
+                        <div style="color:var(--text-muted);font-size:.78rem;margin-top:.25rem;"
+                             th:text="${#temporals.format(n.createdAt,'dd MMM yyyy HH:mm')}"></div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="d-flex gap-1 flex-shrink-0">
+                        <!-- Link to related item if available -->
+                        <a th:if="${n.actionUrl != null and !n.actionUrl.isEmpty()}"
+                           th:href="${n.actionUrl}"
+                           class="btn btn-sm btn-outline-primary" title="View">
+                            <i class="bi bi-arrow-right"></i>
+                        </a>
+                        <!-- Dismiss (delete) -->
+                        <form th:action="@{/notifications/{id}/dismiss(id=${n.id})}" method="post">
+                            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" title="Dismiss">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

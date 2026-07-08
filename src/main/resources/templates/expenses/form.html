@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Expense Form &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <h1 class="page-title">
+            <i class="bi bi-receipt"></i>
+            <span th:text="${expenseDTO.id != null} ? 'Edit Expense' : 'New Expense'">New Expense</span>
+        </h1>
+        <a th:href="@{/expenses}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card ems-card">
+        <div class="card-body">
+            <form th:action="${expenseDTO.id != null} ? @{/expenses/{id}(id=${expenseDTO.id})} : @{/expenses}"
+                  method="post" enctype="multipart/form-data" th:object="${expenseDTO}" id="expenseForm">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <input type="hidden" name="_method" th:value="${expenseDTO.id != null} ? 'PUT' : 'POST'">
+
+                <div class="row g-4">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="title" class="form-label required">Expense Title</label>
+                            <input type="text" id="title" class="form-control" th:field="*{title}"
+                                   th:classappend="${#fields.hasErrors('title')} ? 'is-invalid'"
+                                   placeholder="e.g., Business lunch with client">
+                            <div class="invalid-feedback" th:errors="*{title}"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="expenseDate" class="form-label required">Expense Date</label>
+                            <input type="date" id="expenseDate" class="form-control" th:field="*{expenseDate}"
+                                   th:classappend="${#fields.hasErrors('expenseDate')} ? 'is-invalid'">
+                            <div class="invalid-feedback" th:errors="*{expenseDate}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="amount" class="form-label required">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rs.</span>
+                                <input type="number" id="amount" class="form-control" th:field="*{amount}"
+                                       th:classappend="${#fields.hasErrors('amount')} ? 'is-invalid'"
+                                       step="0.01" min="0.01" placeholder="0.00">
+                                <div class="invalid-feedback" th:errors="*{amount}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label for="currency" class="form-label">Currency</label>
+                            <select id="currency" class="form-select" th:field="*{currency}">
+                                <option value="LKR">LKR</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="GBP">GBP</option>
+                                <option value="INR">INR</option>
+                                <option value="CAD">CAD</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="category" class="form-label required">Category</label>
+                            <select id="category" class="form-select" th:field="*{category}"
+                                    th:classappend="${#fields.hasErrors('category')} ? 'is-invalid'">
+                                <option value="">Select category...</option>
+                                <option th:each="cat : ${categories}" th:value="${cat}" th:text="${cat}"></option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{category}"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="expenseType" class="form-label required">Expense Type</label>
+                            <select id="expenseType" class="form-select" th:field="*{expenseType}"
+                                    th:classappend="${#fields.hasErrors('expenseType')} ? 'is-invalid'">
+                                <option value="">Select type...</option>
+                                <option th:each="t : ${types}" th:value="${t}" th:text="${t}"></option>
+                            </select>
+                            <div class="invalid-feedback" th:errors="*{expenseType}"></div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea id="description" class="form-control" th:field="*{description}"
+                                      rows="3" placeholder="Additional details..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea id="notes" class="form-control" th:field="*{notes}"
+                                      rows="2" placeholder="Notes for the approver..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="receiptFile" class="form-label">Receipt (JPEG/PNG/PDF, max 5MB)</label>
+                            <div class="file-upload-area" id="fileUploadArea">
+                                <i class="bi bi-cloud-upload"></i>
+                                <p>Drag &amp; drop or click to upload receipt</p>
+                                <input type="file" id="receiptFile" name="receiptFile"
+                                       accept="image/jpeg,image/png,application/pdf"
+                                       class="file-input" onchange="handleFileSelect(this)">
+                            </div>
+                            <div id="filePreview" class="file-preview d-none">
+                                <i class="bi bi-file-earmark-check text-success"></i>
+                                <span id="fileName"></span>
+                                <button type="button" onclick="clearFile()" class="btn btn-sm btn-outline-danger ms-2">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                            <div th:if="${expense != null and expense.hasReceipt()}" class="existing-file mt-2">
+                                <i class="bi bi-paperclip"></i>
+                                <a th:href="@{/expenses/{id}/receipt(id=${expense.id})}" target="_blank"
+                                   th:text="${expense.receiptFileName}">Current receipt</a>
+                                <span class="text-muted">(upload new to replace)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a th:href="@{/expenses}" class="btn btn-outline-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-secondary">
+                        <i class="bi bi-save"></i> Save as Draft
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

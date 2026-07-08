@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title>My Budget &mdash; EMS</title>
+    <script th:inline="javascript">
+        /* Set default dates when page loads */
+        document.addEventListener('DOMContentLoaded', function () {
+            const today = new Date().toISOString().split('T')[0];
+            const startInput = document.getElementById('startDate');
+            const endInput   = document.getElementById('endDate');
+
+            // Default start = today
+            if (!startInput.value) startInput.value = today;
+
+            // Default end = 1 month from start
+            if (!endInput.value) {
+                const d = new Date(startInput.value);
+                d.setMonth(d.getMonth() + 1);
+                endInput.value = d.toISOString().split('T')[0];
+            }
+
+            // When start changes: enforce min on end, auto-set end to +1 month
+            startInput.addEventListener('change', function () {
+                endInput.min = startInput.value;
+                const d = new Date(startInput.value);
+                d.setMonth(d.getMonth() + 1);
+                endInput.value = d.toISOString().split('T')[0];
+            });
+        });
+    </script>
+</head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <h1 class="page-title"><i class="bi bi-wallet2"></i> My Budget</h1>
+        <span class="badge" style="background:var(--accent-purple);font-size:.8rem;padding:.4rem .8rem;">
+            <i class="bi bi-person-circle me-1"></i> Personal
+        </span>
+    </div>
+
+    <!-- ── Add Budget Form ──────────────────────────────────────── -->
+    <div class="card ems-card mb-4">
+        <div class="card-header">
+            <h5><i class="bi bi-plus-circle me-2"></i>Add Budget Limit</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/budget/set}" th:object="${budgetDTO}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <div class="row g-3">
+                    <!-- Category -->
+                    <div class="col-md-3">
+                        <label class="form-label fw-600">Category <span class="text-danger">*</span></label>
+                        <select th:field="*{category}" class="form-select" required>
+                            <option value="">— Pick category —</option>
+                            <option th:each="cat : ${categories}"
+                                    th:value="${cat}" th:text="${cat}"></option>
+                        </select>
+                    </div>
+
+                    <!-- Amount -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-600">Amount <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <span class="input-group-text">LKR</span>
+                            <input type="number" th:field="*{monthlyLimit}" class="form-control"
+                                   placeholder="0.00" step="0.01" min="0.01" required>
+                        </div>
+                    </div>
+
+                    <!-- Start Date -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-600">Start Date <span class="text-danger">*</span></label>
+                        <input type="date" th:field="*{startDate}" id="startDate"
+                               class="form-control"
+                               th:min="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"
+                               required>
+                        <div class="form-text text-muted">Cannot be before today</div>
+                    </div>
+
+                    <!-- End Date -->
+                    <div class="col-md-2">
+                        <label class="form-label fw-600">End Date <span class="text-danger">*</span></label>
+                        <input type="date" th:field="*{endDate}" id="endDate"
+                               class="form-control"
+                               th:min="${#temporals.format(#temporals.createToday(), 'yyyy-MM-dd')}"
+                               required>
+                        <div class="form-text text-muted">Default: +1 month</div>
+                    </div>
+
+                    <!-- Save -->
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-check-lg me-1"></i> Save
+                        </button>
+                    </div>
+                </div>
+
+                <div th:if="${#fields.hasErrors('*')}" class="alert alert-danger mt-3 py-2">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    <span th:each="err : ${#fields.allErrors()}" th:text="${err}"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── Empty state ───────────────────────────────────────────── -->
+    <div th:if="${limits.empty}" class="card ems-card text-center py-5">
+        <div style="font-size:3rem;opacity:.25;"><i class="bi bi-pie-chart"></i></div>
+        <p class="mt-3 text-muted">No active budgets right now.<br>Use the form above to add one.</p>
+    </div>
+
+    <!-- ── Active Budget Limits ──────────────────────────────────── -->
+    <div th:if="${!limits.empty}" class="card ems-card">
+        <div class="card-header">
+            <h5><i class="bi bi-bar-chart me-2"></i>Active Budgets</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Period</th>
+                        <th>Limit</th>
+                        <th>Spent</th>
+                        <th>Remaining</th>
+                        <th>Usage</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="lim : ${limits}">
+                        <td><span class="badge-category" th:text="${lim.category}"></span></td>
+                        <td style="font-size:.82rem;color:var(--text-secondary);">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            <span th:text="${#temporals.format(lim.startDate,'dd MMM yyyy')}"></span>
+                            <span class="text-muted mx-1">→</span>
+                            <span th:text="${#temporals.format(lim.endDate,'dd MMM yyyy')}"></span>
+                        </td>
+                        <td class="amount"
+                            th:text="'LKR ' + ${#numbers.formatDecimal(lim.monthlyLimit,1,'COMMA',2,'POINT')}"></td>
+                        <td class="amount"
+                            th:text="'LKR ' + ${#numbers.formatDecimal(lim.currentSpend,1,'COMMA',2,'POINT')}"></td>
+                        <td>
+                            <span class="amount fw-600"
+                                  th:with="rem=${lim.monthlyLimit.subtract(lim.currentSpend)}"
+                                  th:classappend="${rem.compareTo(T(java.math.BigDecimal).ZERO) < 0} ? 'text-danger' : 'text-success'"
+                                  th:text="'LKR ' + ${#numbers.formatDecimal(rem,1,'COMMA',2,'POINT')}"></span>
+                        </td>
+                        <td style="min-width:130px;">
+                            <div class="progress mb-1" style="height:8px;background:var(--bg-card-2);">
+                                <div class="progress-bar"
+                                     th:with="pct=${lim.usagePercentage}"
+                                     th:style="'width:' + ${pct > 100 ? 100 : pct} + '%'"
+                                     th:classappend="${pct >= 100} ? 'bg-danger' : (${pct >= 80} ? 'bg-warning' : 'bg-success')"
+                                     role="progressbar"></div>
+                            </div>
+                            <small th:text="${#numbers.formatDecimal(lim.usagePercentage,1,1) + '%'}"
+                                   style="color:var(--text-muted);font-size:.75rem;"></small>
+                        </td>
+                        <td>
+                            <form th:action="@{/budget/limit/{id}/delete(id=${lim.id})}"
+                                  method="post"
+                                  onsubmit="return confirm('Remove this budget limit?')">
+                                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

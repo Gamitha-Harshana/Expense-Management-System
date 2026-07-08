@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Company Admin &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <!-- Header -->
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">
+                <i class="bi bi-building-gear"></i>
+                <span th:text="${company.name}">Company Admin</span>
+            </h1>
+            <p class="page-sub" th:text="'Industry: ' + ${company.industry ?: 'N/A'} + ' · ' + (${company.country ?: ''})"></p>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/company/admin/add-manager}" class="btn btn-primary">
+                <i class="bi bi-person-plus"></i> Add Manager
+            </a>
+            <a th:href="@{/company/admin/add-department}" class="btn btn-outline-primary">
+                <i class="bi bi-diagram-3"></i> Add Department
+            </a>
+        </div>
+    </div>
+
+
+    <!-- Stats Row -->
+    <div class="stats-grid" style="--cols:4;">
+        <div class="stat-card stat-card-primary">
+            <div class="stat-icon"><i class="bi bi-people"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${employeeCount ?: 0}">0</div>
+                <div class="stat-label">Total Employees</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-info">
+            <div class="stat-icon"><i class="bi bi-person-gear"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${managers != null ? managers.size() : 0}">0</div>
+                <div class="stat-label">Managers</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-warning">
+            <div class="stat-icon"><i class="bi bi-diagram-3"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${departments != null ? departments.size() : 0}">0</div>
+                <div class="stat-label">Departments</div>
+            </div>
+        </div>
+        <div class="stat-card stat-card-success">
+            <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-info">
+                <div class="stat-value" th:text="${pendingCount ?: 0}">0</div>
+                <div class="stat-label">Pending Approvals</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Departments Section -->
+    <div class="card ems-card mb-4">
+        <div class="card-header">
+            <h5><i class="bi bi-diagram-3 me-2"></i>Departments</h5>
+            <a th:href="@{/company/admin/add-department}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-plus-lg"></i> Add
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${departments == null or departments.empty}" class="empty-state py-5">
+                <i class="bi bi-diagram-3 fs-1 d-block mb-2 text-muted"></i>
+                <p class="text-muted">No departments yet. Add one to structure your company.</p>
+            </div>
+            <div class="table-responsive" th:if="${departments != null and !departments.empty}">
+                <table class="table table-hover ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th>Manager</th>
+                        <th>Employees</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="dept : ${departments}">
+                        <td>
+                            <span class="fw-500" th:text="${dept.name}"></span>
+                        </td>
+                        <td>
+                            <span th:if="${dept.manager != null}" th:text="${dept.manager.fullName}" class="badge-role badge-manager"></span>
+                            <span th:unless="${dept.manager != null}" class="text-muted small">No manager assigned</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary" th:text="${dept.members != null ? dept.members.size() : 0}"></span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a th:href="@{/company/admin/departments/{id}/edit(id=${dept.id})}"
+                                   class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form th:action="@{/company/departments/{id}/delete(id=${dept.id})}"
+                                      method="post" onsubmit="return confirm('Delete this department?')">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Managers Section -->
+    <div class="card ems-card mb-4">
+        <div class="card-header">
+            <h5><i class="bi bi-person-gear me-2"></i>Managers</h5>
+            <a th:href="@{/company/admin/add-manager}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-plus-lg"></i> Add Manager
+            </a>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${managers == null or managers.empty}" class="empty-state py-5">
+                <i class="bi bi-person-x fs-1 d-block mb-2 text-muted"></i>
+                <p class="text-muted">No managers yet.</p>
+            </div>
+            <div class="table-responsive" th:if="${managers != null and !managers.empty}">
+                <table class="table table-hover ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Manager</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Employees Under</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="mgr : ${managers}">
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar" th:text="${mgr.firstName.charAt(0)}"></div>
+                                <div>
+                                    <div class="fw-500" th:text="${mgr.fullName}"></div>
+                                    <div class="text-muted small">Manager</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${mgr.email}" class="text-muted"></td>
+                        <td>
+                            <span th:if="${mgr.department != null}" th:text="${mgr.department.name}" class="badge-category"></span>
+                            <span th:unless="${mgr.department != null}" class="text-muted small">No department</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary" th:text="${mgrEmployeeCounts?.get(mgr.id) ?: 0}"></span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <form th:action="@{/company/managers/{id}/remove(id=${mgr.id})}"
+                                      method="post" onsubmit="return confirm('Remove this manager from company?')">
+                                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove">
+                                        <i class="bi bi-person-dash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- All Company Employees -->
+    <div class="card ems-card">
+        <div class="card-header">
+            <h5><i class="bi bi-people me-2"></i>All Employees</h5>
+        </div>
+        <div class="card-body p-0">
+            <div th:if="${employees == null or employees.empty}" class="empty-state py-5">
+                <i class="bi bi-people fs-1 d-block mb-2 text-muted"></i>
+                <p class="text-muted">No employees yet. Managers can add employees.</p>
+            </div>
+            <div class="table-responsive" th:if="${employees != null and !employees.empty}">
+                <table class="table table-hover ems-table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Email</th>
+                        <th>Department</th>
+                        <th>Added By</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="emp : ${employees}">
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar" th:text="${emp.firstName.charAt(0)}"></div>
+                                <span class="fw-500" th:text="${emp.fullName}"></span>
+                            </div>
+                        </td>
+                        <td th:text="${emp.email}" class="text-muted small"></td>
+                        <td>
+                            <span th:if="${emp.department != null}" th:text="${emp.department.name}" class="badge-category"></span>
+                            <span th:unless="${emp.department != null}" class="text-muted small">—</span>
+                        </td>
+                        <td th:text="${emp.addedBy?.fullName ?: '—'}" class="text-muted small"></td>
+                        <td>
+                            <span th:if="${emp.enabled}" class="status-badge status-approved">Active</span>
+                            <span th:unless="${emp.enabled}" class="status-badge status-rejected">Inactive</span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>

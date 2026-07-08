@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en"
+      xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Assign Budget &mdash; EMS</title></head>
+<body>
+<div layout:fragment="content">
+
+    <div class="page-header">
+        <div>
+            <h1 class="page-title"><i class="bi bi-cash-stack"></i> Assign Budget</h1>
+            <p class="page-sub">Set a budget pool for an employee</p>
+        </div>
+        <a th:href="@{/department/manage}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Back
+        </a>
+    </div>
+
+    <div class="card ems-card" style="max-width:580px;">
+        <div class="card-header">
+            <h5><i class="bi bi-wallet2 me-2"></i>Budget Details</h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/department/budget/assign}" th:object="${dto}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                <!-- Employee -->
+                <div class="mb-4">
+                    <label class="form-label fw-600">Employee <span class="text-danger">*</span></label>
+                    <select th:field="*{employeeId}" class="form-select" required>
+                        <option value="">— Select employee —</option>
+                        <option th:each="emp : ${employees}"
+                                th:value="${emp.id}"
+                                th:text="${emp.fullName} + ' (' + ${emp.email} + ')'"
+                                th:selected="${preselectedEmployeeId != null and emp.id == preselectedEmployeeId}">
+                        </option>
+                    </select>
+                    <div class="form-text text-danger" th:if="${#fields.hasErrors('employeeId')}"
+                         th:errors="*{employeeId}"></div>
+                </div>
+
+                <!-- Label -->
+                <div class="mb-4">
+                    <label class="form-label fw-600">Label</label>
+                    <input type="text" th:field="*{label}" class="form-control"
+                           placeholder='e.g. "July 2025" or "Conference Trip"'>
+                    <div class="form-text text-muted">Optional — helps identify this pool.</div>
+                </div>
+
+                <!-- Amount -->
+                <div class="mb-4">
+                    <label class="form-label fw-600">Total Amount <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
+                        <input type="number" th:field="*{totalAmount}" class="form-control"
+                               placeholder="50000" step="0.01" min="0.01" required>
+                    </div>
+                    <div class="form-text text-danger" th:if="${#fields.hasErrors('totalAmount')}"
+                         th:errors="*{totalAmount}"></div>
+                </div>
+
+                <!-- Dates -->
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6">
+                        <label class="form-label fw-600">Valid From <span class="text-danger">*</span></label>
+                        <input type="date" th:field="*{startDate}" class="form-control" required>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label fw-600">Valid Until <span class="text-danger">*</span></label>
+                        <input type="date" th:field="*{endDate}" class="form-control" required>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Assign Budget
+                    </button>
+                    <a th:href="@{/department/manage}" class="btn btn-outline-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+</body>
+</html>
